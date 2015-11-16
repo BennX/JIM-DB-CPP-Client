@@ -57,6 +57,12 @@ def BTree_DownloadURL() :
         raise RuntimeError("STX BStar Download URL not found")
     return "https://panthema.net/2007/stx-btree/stx-btree-"+found.group(2)+".tar.bz2", found.group(2)
 
+def ASIO_DownloadURL() :
+    found = re.search( "<a href=\"/chriskohlhoff/asio/archive/asio-(.*)\.zip\" rel=\"nofollow\">", Utilities.URLReader("https://github.com/chriskohlhoff/asio/releases") )
+    if found == None :
+        raise RuntimeError("ASIO Download URL not found")
+    return "https://github.com/chriskohlhoff/asio/archive/asio-"+found.group(1)+".zip", found.group(1)
+
 
 
 
@@ -132,6 +138,16 @@ def BStar_BuildInstall(env) :
     extract      = env.Unpack( "#btree-extract", download, UNPACKLIST=[os.path.join("stx-btree-"+version, "include", "stx", i) for i in ["btree.h","btree_map.h", "btree_multimap.h", "btree_multiset.h", "btree_set.h"]] )
     return env.InstallInto( prefix, extract, INSTALLATIONDIRS=[os.path.join("include", "stx")]*4 )
 
+def ASIO_BuildInstall(env) :
+    url, version = ASIO_DownloadURL()
+    prefix       = os.path.join("build", "asio", version)
+    if os.path.exists(prefix) :
+        return [], prefix
+
+    download     = env.URLDownload( url.split("/")[-1], url, URLDOWNLOAD_USEURLFILENAME=False  )
+    extract      = env.Unpack( "#asio-extract", download, UNPACKLIST=[os.path.join("asio-asio-"+version,"asio" ,"include", "asio", i) for i in ["asio.hpp"] ] ) #[os.path.join("asio-asio-"+version,"include","asio") )
+    return env.InstallInto( prefix, extract, INSTALLATIONDIRS=[os.path.join("include", "asio")] )
+
 
 
 #=== target structure ================================================================================================================
@@ -165,6 +181,9 @@ if "library" in COMMAND_LINE_TARGETS:
     if not("bstar" in skiplist) :
         lstbuild.extend( BStar_BuildInstall(env) )
 
+    if not("asio" in skiplist) :
+        lstbuild.extend( ASIO_BuildInstall(env) )
+
 
 
 lremove = [
@@ -174,7 +193,8 @@ lremove = [
     Glob(os.path.join("#", "library", "*"+env["SHLIBSUFFIX"])),
     #Glob(os.path.join("#", "library", "lua*")),
     Glob(os.path.join("#", "library", "rapid*")),
-    Glob(os.path.join("#", "library", "stx-btree*"))
+    Glob(os.path.join("#", "library", "stx-btree*")),
+    Glob(os.path.join("#", "library", "asio*"))
 ]
 for i in env["UNPACK"]["SUFFIXES"] :
     lremove.extend( Glob(os.path.join("#", "library", "*"+i)) )
