@@ -64,57 +64,6 @@ def ASIO_DownloadURL() :
     return "https://github.com/chriskohlhoff/asio/archive/asio-"+found.group(1)+".zip", found.group(1)
 
 
-
-
-
-
-#=== building libraries ==============================================================================================================
-#def LUA_BuildInstall(env) :
-    # download the LUA source code package and stop if the version is build
-#    url, version = LUA_DownloadURL()
-#    prefix       = os.path.join("build", "lua", version)
-#    if os.path.exists(prefix) :
-#        return [], prefix
-
-    # create build environment with the correct settings
-#    envlua = env.Clone()
-#    envlua.Replace(CPPPATH = [])
-#    envlua.Replace(LINKFLAGS = [])
-#    envlua.Replace(CPPFLAGS = [])
-#    envlua.Replace(LIBS = [])
-#    envlua.Replace(CPPDEFINES  = ["LUA_COMPAT_ALL", "NDEBUG"])
-
-#    download     = env.URLDownload( "#lua-download", url )
-#    extractdir   = str(download).replace("'", "").replace("[", "").replace("]", "").replace(".tar.gz", "")
-
-#    headerfiles  = [os.path.join(extractdir, "src", i) for i in [ "lauxlib.h", "lua.h", "luaconf.h", "lualib.h", "lua.hpp" ]]
-#    sourcefiles  = envlua.Unpack("#lua-extract",  download, UNPACKLIST=[os.path.join(extractdir, "src", i) for i in [ "lapi.c", "lcode.c", "lctype.c", "ldebug.c", "ldo.c", "ldump.c", "lfunc.c", "lgc.c", "llex.c", "lmem.c", "lobject.c", "lopcodes.c", "lparser.c", "lstate.c", "lstring.c", "ltable.c", "ltm.c", "lundump.c", "lvm.c", "lzio.c", "lauxlib.c", "lbaselib.c", "lbitlib.c", "lcorolib.c", "ldblib.c", "liolib.c", "lmathlib.c", "loslib.c", "lstrlib.c", "ltablib.c", "loadlib.c", "linit.c", "lutf8lib.c" ]])
-
-#    if env["TOOLKIT"] == "darwin" :
-#        envlua.AppendUnique(CPPDEFINES  = ["LUA_USE_MACOSX"])
-#        envlua.AppendUnique(LINKFLAGS   = ["-Wl,-install_name,liblua.dylib", "-current_version "+version, "-compatibility_version "+version])
-#        envlua.AppendUnique(CPPFLAGS    = ["-O2", "-std=c11"])
-
-#    elif env["TOOLKIT"] == "posix" :
-#        envlua.AppendUnique(CPPDEFINES  = ["LUA_USE_POSIX"])
-#        envlua.AppendUnique(CPPFLAGS    = ["-O2", "-std=c11"])
-
-#    elif env["TOOLKIT"] == "msvc" :
-#        envlua.AppendUnique(CPPDEFINES  = ["LUA_BUILD_AS_DLL"])
-#        envlua.AppendUnique(CPPFLAGS    = ["/O2", "/GR", "/EHsc", "/nologo"])
-
-#    else :
-#        raise SCons.Errors.StopError("no library lua build target found in toolkit ["+env["TOOLKIT"]+"]")
-
-    # create and install header and libraries
-#    lib             = envlua.SharedLibrary(target="lua", source=sourcefiles)
-#    install         = envlua.InstallInto( prefix, lib+headerfiles, INSTALLATIONDIRS=["lib"]*len(lib)+["include"]*len(headerfiles) )
-#    env.NoClean(install)
-
-#    return install
-
-
-
 def RapidJson_BuildInstall(env) :
     # download the RapidJson source code package and stop if the version is installed (GitHub uses files without extension)
     url, version = RapidJson_DownloadURL()
@@ -145,8 +94,12 @@ def ASIO_BuildInstall(env) :
         return [], prefix
 
     download     = env.URLDownload( url.split("/")[-1], url, URLDOWNLOAD_USEURLFILENAME=False  )
-    extract      = env.Unpack( "#asio-extract", download, UNPACKLIST=[os.path.join("asio-asio-"+version,"asio" ,"include", "asio", i) for i in ["asio.hpp"] ] ) #[os.path.join("asio-asio-"+version,"include","asio") )
-    return env.InstallInto( prefix, extract, INSTALLATIONDIRS=[os.path.join("include", "asio")] )
+
+    #unpack everything
+    extract      = env.Unpack( "#asio-extract", download, UNPACKLIST="#pseudo-asio")
+    #copy the fiels
+    installSource = os.path.join("asio-asio-" + version, "asio", "include" )
+    return env.Command(prefix, installSource, Copy("$TARGET", "$SOURCE"))
 
 
 
