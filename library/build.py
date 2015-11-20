@@ -85,7 +85,7 @@ def BStar_BuildInstall(env) :
 
     download     = env.URLDownload( url.split("/")[-1], url )
     extract      = env.Unpack( "#btree-extract", download, UNPACKLIST=[os.path.join("stx-btree-"+version, "include", "stx", i) for i in ["btree.h","btree_map.h", "btree_multimap.h", "btree_multiset.h", "btree_set.h"]] )
-    return env.InstallInto( prefix, extract, INSTALLATIONDIRS=[os.path.join("include", "stx")]*4 )
+    return env.InstallInto( prefix, extract, INSTALLATIONDIRS=[os.path.join("include", "stx")] * 4 )
 
 def ASIO_BuildInstall(env) :
     url, version = ASIO_DownloadURL()
@@ -96,12 +96,10 @@ def ASIO_BuildInstall(env) :
     download     = env.URLDownload( url.split("/")[-1], url, URLDOWNLOAD_USEURLFILENAME=False  )
 
     #unpack everything
-    extract      = env.Unpack( "#asio-extract", download, UNPACKLIST="#pseudo-asio")
+    extract      = env.Unpack("#asio-extract", download, UNPACKLIST="#pseudo-asio") #psuedo just because we need a name
     #copy the fiels
     installSource = os.path.join("asio-asio-" + version, "asio", "include" )
     return env.Command(prefix, installSource, Copy("$TARGET", "$SOURCE"))
-
-
 
 #=== target structure ================================================================================================================
 def FinishMessage_print_blank(s, target, source, env):
