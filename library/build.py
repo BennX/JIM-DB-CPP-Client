@@ -98,8 +98,9 @@ def ASIO_BuildInstall(env) :
     #unpack everything
     extract      = env.Unpack("#asio-extract", download, UNPACKLIST="#pseudo-asio") #psuedo just because we need a name
     #copy the fiels
-    installSource = os.path.join("asio-asio-" + version, "asio", "include" )
-    return env.Command(prefix, installSource, Copy("$TARGET", "$SOURCE"))
+    installSource = os.path.join("library","asio-asio-" + version, "asio", "include" )
+    installTarget = os.path.join("library","build", "asio", version)
+    return env.Command("#pseudo-asio-install", extract, Copy(installTarget, installSource))
 
 #=== target structure ================================================================================================================
 def FinishMessage_print_blank(s, target, source, env):
@@ -119,11 +120,6 @@ lstbuild    = []
 if "library" in COMMAND_LINE_TARGETS:
     env["UNPACK"]["EXTRACTDIR"] = "library"
 
-    # download LUA library, extract & install
-    #if not("lua" in skiplist) :
-    #    lstbuild.extend( LUA_BuildInstall(env) )
-
-
     # download Rapid-Json library, extract & install
     if not("json" in skiplist) :
         lstbuild.extend( RapidJson_BuildInstall(env) )
@@ -131,7 +127,8 @@ if "library" in COMMAND_LINE_TARGETS:
     # download BStar library, extract & install
     if not("bstar" in skiplist) :
         lstbuild.extend( BStar_BuildInstall(env) )
-
+        
+    # download Asio library, extract & install
     if not("asio" in skiplist) :
         lstbuild.extend( ASIO_BuildInstall(env) )
 
@@ -147,6 +144,7 @@ lremove = [
     Glob(os.path.join("#", "library", "stx-btree*")),
     Glob(os.path.join("#", "library", "asio*"))
 ]
+
 for i in env["UNPACK"]["SUFFIXES"] :
     lremove.extend( Glob(os.path.join("#", "library", "*"+i)) )
 
