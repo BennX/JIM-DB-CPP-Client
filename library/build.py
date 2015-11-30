@@ -99,7 +99,7 @@ def ASIO_BuildInstall(env) :
     extract      = env.Unpack("#asio-extract", download, UNPACKLIST="#pseudo-asio") #psuedo just because we need a name
     #copy the fiels
     installSource = os.path.join("library","asio-asio-" + version, "asio", "include" )
-    installTarget = os.path.join("library","build", "asio", version)
+    installTarget = os.path.join("library","build", "asio", version , "include")
     return env.Command("#pseudo-asio-install", extract, Copy(installTarget, installSource))
 
 #=== target structure ================================================================================================================
@@ -127,7 +127,7 @@ if "library" in COMMAND_LINE_TARGETS:
     # download BStar library, extract & install
     if not("bstar" in skiplist) :
         lstbuild.extend( BStar_BuildInstall(env) )
-        
+
     # download Asio library, extract & install
     if not("asio" in skiplist) :
         lstbuild.extend( ASIO_BuildInstall(env) )
