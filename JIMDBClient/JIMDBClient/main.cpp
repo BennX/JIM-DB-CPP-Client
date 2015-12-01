@@ -21,16 +21,24 @@
 
 #include "jimdbclient.h"
 #include "log/logger.h"
-#include <chrono>
-#include <thread>
 //test main
 int main(int argc, char* argv[])
 {
     jimdb::JIMDBClient l_client("localhost", "6060");
-    for (int i = 0; i < 100000; i++)
-    {
-        LOG_INFO << *(l_client << std::make_shared<std::string>("{\"Person\":{\"test\":\"striasdfasdngs\"}}"));
-		//std::this_thread::sleep_for(std::chrono::milliseconds(10));
-	}
+    //dump a million!
+    LOG_DEBUG << *l_client.find(156435);
     std::cin.get();
+    /**
+    for (int i = 0; i < 1000000; i++)
+    {
+
+        auto l_res = l_client << std::make_shared<std::string>("{\"Person\":{\"test\":\"striasdfasdngs\"}}");
+        //std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    	if(i%1000 == 0)
+    	{
+    		LOG_INFO << *l_res;
+    	}
+    }
+    std::cin.get();
+    */
 }

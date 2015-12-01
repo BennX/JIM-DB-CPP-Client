@@ -1,6 +1,4 @@
 #pragma once
-#include <string>
-
 /**
 ############################################################################
 # GPL License                                                              #
@@ -22,89 +20,91 @@
 ############################################################################
 **/
 
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-
-#include <windows.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
-#include <iphlpapi.h>
-#include <stdio.h>
-#pragma comment(lib, "Ws2_32.lib")
-#include <string>
-#include <memory>
+#include "clink.h"
+#include "rapidjson/document.h"
 
 namespace jimdb
 {
+
+    enum MessageTypes
+    {
+        INSERT,
+        DEL,
+        FIND,
+        ENUM_SIZE,
+    };
+
+    struct MessageTypeMap
+    {
+        //need the strings for the size
+        static const char* EnumString[];
+
+        /**
+        @return the configValue as const char*
+        */
+        static const char* get(const MessageTypes& e);
+    };
+
     class JIMDBClient
     {
     public:
         JIMDBClient(const std::string& nameorAdd, const std::string& port);
         ~JIMDBClient();
-        /**
-        \brief send a json and get the result
 
+        /**
+        \brief send a JSON Object and get the result
+
+        @throws std::runtime_error if something goes wrong or an error is returned
+        @return the result which the server send back
         @author Benjamin Meyer
         @date 14.11.2015 12:36
         */
         std::shared_ptr<std::string> operator<<(std::shared_ptr<std::string> json);
 
-        /**
-        \brief checks for data 1s
-
-        @author Benjamin Meyer
-        @date 14.11.2015 12:35
-        */
-        bool hasData();
+        std::shared_ptr<std::string> find(uint64_t oid);
     private:
-        SOCKET m_sock;
         std::string m_host;
         std::string m_port;
-        bool m_connected;
-
-        /**
-        \brief connect to the host and port
-
-        @author Benjamin Meyer
-        @date 14.11.2015 12:28
-        */
-        bool connect();
-
+        asio::io_service m_service;
         /**
         \brief do the handshake
 
         @author Benjamin Meyer
         @date 14.11.2015 12:34
         */
-        bool handShake();
+        bool handShake(CLink& link) const;
+
+
+        std::shared_ptr<std::string> generateFind(const uint64_t& oid) const;
+        /**
+        \brief generate an insert message
+
+        @param[in] sptr to string the json object to send
+        @return the generated insert message as string
+        @author Benjamin Meyer
+        @date 01.12.2015 17:55
+        */
+        std::shared_ptr<std::string> generateInsert(std::shared_ptr<std::string> json) const;
 
         /**
-        \brief close the socket if connected
+        \brief generate a message to send to the server
 
+        @param[in] MessageType the type of the message for example inser/delete
+        @param[in] rapidjson::Document the document which get into the data field
+        @return the json of the generated message
         @author Benjamin Meyer
-        @date 14.11.2015 12:28
+        @date 01.12.2015 17:54
         */
-        void close();
+        std::shared_ptr<std::string> generate(const MessageTypes& t,  rapidjson::Value& data) const;
 
         /**
-        \brief method that get data if there are data
+        \brief generates a string from document
 
-        BODY
+        @param[in] rapidjsonValue the value to parse to a string
+        @return sptr to the string
         @author Benjamin Meyer
-        @date 14.11.2015 12:39
+        @date 01.12.2015 17:53
         */
-        std::shared_ptr<std::string> getData();
-
-        /**
-        \brief send raw data
-
-        @author Benjamin Meyer
-        @date 14.11.2015 12:36
-        */
-        bool sendData(std::shared_ptr<std::string> json);
-
-
-        bool checkRetValRecv(const int& n);
+        std::shared_ptr<std::string> toString(rapidjson::Value& data) const;
     };
 }

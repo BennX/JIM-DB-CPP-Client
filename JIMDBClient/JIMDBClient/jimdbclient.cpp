@@ -20,263 +20,123 @@
 ############################################################################
 **/
 #include "jimdbclient.h"
-#define MESSAGE_SIZE 8
-#include "log/logger.h"
-#include "rapidjson/document.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
 
 namespace jimdb
 {
-
-    JIMDBClient::JIMDBClient(const std::string& nameorAdd, const std::string& port) : m_host(nameorAdd), m_port(port),
-        m_connected(false)
+    const char* MessageTypeMap::EnumString[] =
     {
+        "insert",
+        "delete",
+        "find"
+    };
+
+    static_assert(sizeof(MessageTypeMap::EnumString) / sizeof(char*) == ENUM_SIZE, "size dont match!");
+
+    const char* MessageTypeMap::get(const MessageTypes& e)
+    {
+        return EnumString[e];
     }
 
+    JIMDBClient::JIMDBClient(const std::string& nameorAdd, const std::string& port) : m_host(nameorAdd), m_port(port) { }
 
-    JIMDBClient::~JIMDBClient()
-    {
-        close();
-        WSACleanup();
-    }
+
+    JIMDBClient::~JIMDBClient() {}
 
     std::shared_ptr<std::string> JIMDBClient::operator<<(std::shared_ptr<std::string> json)
     {
-        rapidjson::Document l_doc;
-        l_doc.Parse(json->c_str());
-        if (l_doc.HasParseError())
-            return std::make_shared<std::string>("");
+        CLink link(m_service, m_host, m_port);
 
-        rapidjson::Document l_toSend;
-        l_toSend.SetObject();
+        if(handShake(link))
+        {
+            link << generateInsert(json);
+            auto recv = std::make_shared<std::string>("");
+            link >> recv;
 
-        l_toSend.AddMember("type", "insert", l_toSend.GetAllocator());
-        l_toSend.AddMember("data", l_doc, l_toSend.GetAllocator());
+            if (*recv == "")
+                throw std::runtime_error("io error orruced");
 
-        //convert to string
+            //check if there is a issue
+            rapidjson::Document doc;
+            doc.Parse(recv->c_str());
+            if (!doc.HasParseError() && doc["type"].GetString() == "error")
+                throw std::runtime_error(doc["data"]["what"].GetString());
+
+            return recv;
+        }
+        return nullptr;
+    }
+
+    std::shared_ptr<std::string> JIMDBClient::find(uint64_t oid)
+    {
+        CLink link(m_service, m_host, m_port);
+
+        if (handShake(link))
+        {
+            link << generateFind(oid);
+            auto recv = std::make_shared<std::string>("");
+
+            link >> recv;
+            if (*recv == "")
+                throw std::runtime_error("io error orruced");
+			return recv;
+            //check if there is a issue
+            rapidjson::Document doc;
+            doc.Parse(recv->c_str());
+            if (doc.HasParseError())
+				throw std::runtime_error("parse");
+            if(std::string("error") == doc["type"].GetString())
+                throw std::runtime_error(doc["data"]["what"].GetString());
+
+            return recv;
+        }
+    }
+
+    bool JIMDBClient::handShake(CLink& link) const
+    {
+        auto recv = std::make_shared<std::string>("");
+        link >> recv;
+        if (*recv == "")
+            return false;
+        //echo back
+        link << recv;
+        return true;
+    }
+
+    std::shared_ptr<std::string> JIMDBClient::generateFind(const uint64_t& oid) const
+    {
+        rapidjson::Document doc;
+        doc.SetObject();
+        doc.AddMember("oid__", oid, doc.GetAllocator());
+        return generate(FIND, doc);
+    }
+
+    std::shared_ptr<std::string> JIMDBClient::generateInsert(std::shared_ptr<std::string> json) const
+    {
+        rapidjson::Document doc;
+        doc.Parse(json->c_str());
+        if (doc.HasParseError())
+            return nullptr;
+        return generate(INSERT, doc);
+    }
+
+    std::shared_ptr<std::string> JIMDBClient::generate(const MessageTypes& t, rapidjson::Value& data) const
+    {
+        rapidjson::Document doc;
+        doc.SetObject();
+        doc.AddMember("type", rapidjson::Value(MessageTypeMap::get(t), doc.GetAllocator()), doc.GetAllocator());
+        doc.AddMember("data", data, doc.GetAllocator());
+        return toString(doc);
+    }
+
+
+    std::shared_ptr<std::string> JIMDBClient::toString(rapidjson::Value& data) const
+    {
+        // Convert JSON document to string
         rapidjson::StringBuffer strbuf;
         rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
-        l_toSend.Accept(writer);
-        auto l_message = std::make_shared<std::string>(strbuf.GetString());
-
-        auto l_result = std::make_shared<std::string>();
-        if (!connect())
-        {
-            close();
-            return std::make_shared<std::string>("");
-        }
-
-        sendData(l_message);
-
-        //now get the result if it didnt fail
-        //if (hasData())
-        l_result = getData();
-
-        //close after sending
-        close();
-        return l_result;
-    }
-
-    bool JIMDBClient::sendData(std::shared_ptr<std::string> json)
-    {
-        char l_length[MESSAGE_SIZE + 1];
-        if (json == nullptr)
-            return false;
-        sprintf(l_length, "%8d", static_cast<int>(json->size()));
-
-        auto l_message = std::string(l_length);
-        l_message += *json; //add the message
-        int iSendResult;
-
-        iSendResult = ::send(m_sock, l_message.c_str(), l_message.size(), 0);
-        if (iSendResult == SOCKET_ERROR)
-        {
-            //TODO THROW
-            close();
-            return false;
-        }
-        return true;
-    }
-
-    bool JIMDBClient::hasData()
-    {
-        fd_set temp;
-        FD_ZERO(&temp);
-        FD_SET(m_sock, &temp);
-
-        //setup the timeout to 1000ms
-        struct timeval tv;
-        tv.tv_sec = 5;
-        tv.tv_usec = 1000;
-
-        if (select(m_sock + 1, &temp, nullptr, nullptr, &tv) == -1)
-        {
-            return false;
-        }
-
-        if (FD_ISSET(m_sock, &temp))
-            return true;
-
-        return false;
-    }
-
-    bool JIMDBClient::connect()
-    {
-        WSADATA wsaData;
-        m_sock = INVALID_SOCKET;
-        struct addrinfo* result = nullptr, *ptr = nullptr, hints;
-
-        int iResult;
-
-        /* Initialisiere TCP für Windows ("winsock"). */
-        WORD wVersionRequested;
-
-        // Initialize Winsock
-        iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
-        if (iResult != 0)
-        {
-            m_connected = false;
-            return false;
-        }
-
-        ZeroMemory(&hints, sizeof(hints));
-        hints.ai_family = AF_INET;
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_protocol = IPPROTO_TCP;
-
-        // Resolve the server address and port
-        iResult = getaddrinfo(m_host.c_str(), m_port.c_str(), &hints, &result);
-        if (iResult != 0)
-        {
-            m_connected = false;
-            return false;
-        }
-
-        // Attempt to connect to an address until one succeeds
-        for (ptr = result; ptr != nullptr; ptr = ptr->ai_next)
-        {
-            // if (ptr->ai_protocol == 6 && ptr->ai_family == 23 && ptr->ai_socktype == 1)
-            //   continue;
-            // Create a SOCKET for connecting to server
-            m_sock = socket(ptr->ai_family, ptr->ai_socktype,
-                            ptr->ai_protocol);
-
-            if (m_sock == INVALID_SOCKET)
-            {
-                m_connected = false;
-                return false;
-            }
-
-            // Connect to server.
-            iResult = ::connect(m_sock, ptr->ai_addr, static_cast<int>(ptr->ai_addrlen));
-            if (iResult == SOCKET_ERROR)
-            {
-                closesocket(m_sock);
-                m_sock = INVALID_SOCKET;
-                continue;
-            }
-            break;
-        }
-
-        freeaddrinfo(result);
-
-        if (m_sock == INVALID_SOCKET)
-        {
-            WSACleanup();
-            m_connected = false;
-            return false;
-        }
-
-        if(!handShake())
-        {
-            LOG_WARN << "handshake failed";
-            return false;
-        }
-
-        m_connected = true;
-        return m_connected;
-    }
-
-    bool JIMDBClient::handShake()
-    {
-        if(hasData())
-        {
-            //simply echo back here
-            auto l_result = getData();
-            if (l_result == nullptr)
-                return false;
-
-            sendData(l_result);
-            return true;
-        }
-        return false;
-    }
-
-    void JIMDBClient::close()
-    {
-        if (m_connected)
-        {
-            closesocket(m_sock);
-            m_connected = false;
-        }
-    }
-
-    std::shared_ptr<std::string> JIMDBClient::getData()
-    {
-        auto l_result = std::make_shared<std::string>();
-        int n;
-
-        char size[MESSAGE_SIZE + 1];
-        n = recv(m_sock, size, sizeof(size) - 1, 0);
-        size[MESSAGE_SIZE] = '\0';
-
-        //check if retval passed
-        if (!checkRetValRecv(n))
-            return l_result; //should be empty
-
-        //calc how much data
-        auto msgLen = atoi(size);
-        //create buffer for the data
-        auto buffer = new char[msgLen + 1];
-        buffer[msgLen] = '\0';
-        //read buffer
-        n = recv(m_sock, buffer, msgLen, 0);
-
-
-        //check retval if it passes
-        if (!checkRetValRecv(n))
-            return l_result;//should be empty
-
-        l_result->append(buffer, msgLen);
-
-        delete[] buffer;
-        return l_result;
-    }
-
-    bool JIMDBClient::checkRetValRecv(const int& n)
-    {
-        if (n == SOCKET_ERROR)
-        {
-            size_t err = WSAGetLastError();
-            if (err == WSAECONNRESET)
-            {
-                LOG_ERROR << "Failed to recv! Disconnecting from client: " << "Connection reset by peer.";
-            }
-            else
-            {
-                LOG_ERROR << "Disconnecting from client. WSAError: " << err;
-            }
-            m_connected = false;
-            return false;
-        }
-
-        if (n == 0)
-        {
-            LOG_INFO << "Client disconnected.";
-            m_connected = false;
-            return false;
-        }
-        return true;
+        data.Accept(writer);
+        return std::make_shared<std::string>(strbuf.GetString());
     }
 }
