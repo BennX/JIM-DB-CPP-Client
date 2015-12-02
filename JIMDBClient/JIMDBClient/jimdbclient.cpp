@@ -22,6 +22,7 @@
 #include "jimdbclient.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
+#include "log/logger.h"
 
 namespace jimdb
 {
@@ -41,9 +42,6 @@ namespace jimdb
 
     JIMDBClient::JIMDBClient(const std::string& nameorAdd, const std::string& port) : m_host(nameorAdd), m_port(port) { }
 
-
-    JIMDBClient::~JIMDBClient() {}
-
     std::shared_ptr<std::string> JIMDBClient::operator<<(std::shared_ptr<std::string> json)
     {
         CLink link(m_service, m_host, m_port);
@@ -60,7 +58,7 @@ namespace jimdb
             //check if there is a issue
             rapidjson::Document doc;
             doc.Parse(recv->c_str());
-            if (!doc.HasParseError() && doc["type"].GetString() == "error")
+            if (!doc.HasParseError() && doc["type"].GetString() == std::string("error"))
                 throw std::runtime_error(doc["data"]["what"].GetString());
 
             return recv;
@@ -80,17 +78,32 @@ namespace jimdb
             link >> recv;
             if (*recv == "")
                 throw std::runtime_error("io error orruced");
-			return recv;
+            return recv;
             //check if there is a issue
             rapidjson::Document doc;
             doc.Parse(recv->c_str());
             if (doc.HasParseError())
-				throw std::runtime_error("parse");
+                throw std::runtime_error("parse");
             if(std::string("error") == doc["type"].GetString())
                 throw std::runtime_error(doc["data"]["what"].GetString());
 
             return recv;
         }
+    }
+
+    std::shared_ptr<std::string> JIMDBClient::send(std::shared_ptr<std::string> json)
+    {
+        CLink link(m_service, m_host, m_port);
+
+        if (handShake(link))
+        {
+            link << json;
+            auto recv = std::make_shared<std::string>("");
+            link >> recv;
+            return recv;
+        }
+
+        return nullptr;
     }
 
     bool JIMDBClient::handShake(CLink& link) const
@@ -131,7 +144,7 @@ namespace jimdb
     }
 
 
-    std::shared_ptr<std::string> JIMDBClient::toString(rapidjson::Value& data) const
+    std::shared_ptr<std::string> JIMDBClient::toString(rapidjson::Value& data)
     {
         // Convert JSON document to string
         rapidjson::StringBuffer strbuf;

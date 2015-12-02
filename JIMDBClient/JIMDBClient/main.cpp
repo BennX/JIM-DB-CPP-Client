@@ -18,27 +18,48 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.     #
 ############################################################################
 **/
-
+#pragma once
 #include "jimdbclient.h"
 #include "log/logger.h"
 //test main
 int main(int argc, char* argv[])
 {
-    jimdb::JIMDBClient l_client("localhost", "6060");
-    //dump a million!
-    LOG_DEBUG << *l_client.find(156435);
-    std::cin.get();
-    /**
-    for (int i = 0; i < 1000000; i++)
-    {
+    jimdb::JIMDBClient l_client("127.0.0.1", "6060");
 
-        auto l_res = l_client << std::make_shared<std::string>("{\"Person\":{\"test\":\"striasdfasdngs\"}}");
-        //std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    	if(i%1000 == 0)
-    	{
-    		LOG_INFO << *l_res;
-    	}
+    std::ifstream t("Persons.json");
+    std::string str((std::istreambuf_iterator<char>(t)),
+                    std::istreambuf_iterator<char>());
+
+    rapidjson::Document doc;
+    doc.Parse(str.c_str());
+    if (doc.HasParseError())
+        return EXIT_FAILURE;
+
+    std::vector<std::shared_ptr<std::string>> l_persons;
+
+    for (auto it = doc.Begin(); it != doc.End(); ++it)
+    {
+        l_persons.push_back(jimdb::JIMDBClient::toString(*it));
     }
+
+
+    LOG_INFO << l_persons.size();
+    //dump a million!
+    //std::cin.get();
+    //throw in a million
+    for (int i = 0; i < 20; ++i)
+    {
+		for (int j = 0; j < 50000; ++j)
+		{
+			try {
+				auto l_res = l_client << l_persons[j];
+			}catch(std::runtime_error& e)
+			{
+				LOG_ERROR << e.what();
+			}
+		}
+    }
+    //last but not least force a dump out of the results of the benchmark
+    l_client.send(std::make_shared<std::string>("{\"type\":\"bench\"}"));
     std::cin.get();
-    */
 }

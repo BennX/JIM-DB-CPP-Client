@@ -49,7 +49,6 @@ namespace jimdb
     {
     public:
         JIMDBClient(const std::string& nameorAdd, const std::string& port);
-        ~JIMDBClient();
 
         /**
         \brief send a JSON Object and get the result
@@ -62,6 +61,20 @@ namespace jimdb
         std::shared_ptr<std::string> operator<<(std::shared_ptr<std::string> json);
 
         std::shared_ptr<std::string> find(uint64_t oid);
+
+        //does a blank send no wrapping or something else!!
+        std::shared_ptr<std::string> send(std::shared_ptr<std::string> json);
+
+        /**
+        \brief generates a string from document
+
+        @param[in] rapidjsonValue the value to parse to a string
+        @return sptr to the string
+        @author Benjamin Meyer
+        @date 01.12.2015 17:53
+        */
+        static std::shared_ptr<std::string> toString(rapidjson::Value& data);
+
     private:
         std::string m_host;
         std::string m_port;
@@ -96,15 +109,5 @@ namespace jimdb
         @date 01.12.2015 17:54
         */
         std::shared_ptr<std::string> generate(const MessageTypes& t,  rapidjson::Value& data) const;
-
-        /**
-        \brief generates a string from document
-
-        @param[in] rapidjsonValue the value to parse to a string
-        @return sptr to the string
-        @author Benjamin Meyer
-        @date 01.12.2015 17:53
-        */
-        std::shared_ptr<std::string> toString(rapidjson::Value& data) const;
     };
 }

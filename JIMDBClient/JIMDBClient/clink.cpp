@@ -6,14 +6,15 @@ namespace jimdb
 {
     CLink::CLink(asio::io_service& service, const std::string& host, const std::string& port,
                  const int& i) : m_socket(service),
-        m_timeout(i)
+        m_timeout(i), m_connected(false)
     {
         asio::ip::tcp::resolver l_res(service);
         asio::ip::tcp::resolver::query l_query(asio::ip::tcp::v4(), host, port);
         asio::async_connect(m_socket, l_res.resolve(l_query),
                             [&](std::error_code ec, asio::ip::tcp::resolver::iterator it)
         {
-            if (ec) throw std::runtime_error(ec.message());
+            if (ec)
+                LOG_ERROR << ec.message();//  throw std::runtime_error(ec.message());
         });
         await_operation(std::chrono::milliseconds(m_timeout));
     }
@@ -50,7 +51,7 @@ namespace jimdb
         if (l_buffer != nullptr)
         {
             get->append(l_buffer);
-			delete[] l_buffer;
+            delete[] l_buffer;
             return;
         }
 
