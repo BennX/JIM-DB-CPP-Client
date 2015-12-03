@@ -90,6 +90,7 @@ namespace jimdb
 
         asio::ip::tcp::socket m_socket;
         int m_timeout;
+		bool m_connected;
     };
 }
 #include "clink.hpp"
