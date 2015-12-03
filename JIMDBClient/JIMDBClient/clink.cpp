@@ -21,8 +21,8 @@ namespace jimdb
 
     CLink::~CLink()
     {
-		m_socket.shutdown(asio::ip::tcp::socket::shutdown_both);
-        m_socket.close();
+        // m_socket.shutdown(asio::ip::tcp::socket::shutdown_both);
+        // m_socket.close();
     }
 
     void CLink::operator>>(std::shared_ptr<std::string> get)
@@ -70,8 +70,13 @@ namespace jimdb
         l_message += *tosend;
 
         //this doesnt like string itself getting xstring issues so go for the cstring.
-        asio::async_write(m_socket, asio::buffer(l_message.c_str(), l_message.size()), [&](std::error_code ec,
-        size_t bytes_read) {});
+        m_socket.async_write_some(asio::buffer(l_message.c_str(), l_message.size()), [&](asio::error_code ec,
+                                  size_t bytes_read)
+        {
+            if (ec)
+                LOG_DEBUG << ec.message();
+        });
+		m_socket.get_io_service().run_one();
         await_operation(std::chrono::seconds(1));
     }
 

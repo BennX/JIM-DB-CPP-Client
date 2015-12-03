@@ -24,7 +24,7 @@
 //test main
 int main(int argc, char* argv[])
 {
-    jimdb::JIMDBClient l_client("127.0.0.1", "6060");
+
 
     std::ifstream t("Persons.json");
     std::string str((std::istreambuf_iterator<char>(t)),
@@ -41,25 +41,55 @@ int main(int argc, char* argv[])
     {
         l_persons.push_back(jimdb::JIMDBClient::toString(*it));
     }
+    /**
+    asio::io_service serv;
+    jimdb::CLink link(serv, "127.0.0.1", "6060");
+    auto recv = std::make_shared<std::string>("");
+    link >> recv;
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    LOG_DEBUG << *recv;
+    link << recv;
+    std::cin.get();
+    */
 
 
     LOG_INFO << l_persons.size();
     //dump a million!
     //std::cin.get();
+
+    jimdb::JIMDBClient l_client("localhost", "6060");
+
     //throw in a million
-    for (int i = 0; i < 20; ++i)
+    for (int i = 0; i < 100; ++i)
     {
-		for (int j = 0; j < 50000; ++j)
-		{
-			try {
-				auto l_res = l_client << l_persons[j];
-			}catch(std::runtime_error& e)
-			{
-				LOG_ERROR << e.what();
-			}
-		}
+        for (int j = 0; j < 10000; ++j)
+        {
+            try
+            {
+
+                auto recv = l_client << l_persons[j];
+                if(j % 10000 == 0)
+                    LOG_ERROR << *recv;
+            }
+            catch(std::runtime_error& e)
+            {
+                LOG_ERROR << e.what();
+            }
+        }
     }
     //last but not least force a dump out of the results of the benchmark
-    l_client.send(std::make_shared<std::string>("{\"type\":\"bench\"}"));
-    std::cin.get();
+    //l_client.send(std::make_shared<std::string>("{\"type\":\"bench\"}"));
+    std::stringstream ss;
+    std::string l_string;
+    while (true)
+    {
+        std::getline(std::cin, l_string);
+        int l_oid;
+        ss << l_string;
+        ss >> l_oid;
+        ss.clear();
+        l_string.clear();
+
+        LOG_DEBUG << *l_client.find(l_oid);
+    }
 }

@@ -79,6 +79,8 @@ namespace jimdb
         std::string m_host;
         std::string m_port;
         asio::io_service m_service;
+		CLink m_link;
+
         /**
         \brief do the handshake
 
