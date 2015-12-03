@@ -21,6 +21,7 @@ namespace jimdb
 
     CLink::~CLink()
     {
+		m_socket.shutdown(asio::ip::tcp::socket::shutdown_both);
         m_socket.close();
     }
 
