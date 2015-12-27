@@ -179,7 +179,7 @@ for i in builddirs :
 # === default build =====================================================================================================================
 default = env.Program(
     target = os.path.join("#build", env["buildtype"], "JimTestDumpClient"),
-    source = Utilities.GlobRekursiv( os.path.join(os.curdir, "JIMDBClient" ), ".cpp" )
+    source = Utilities.GlobRekursiv( os.path.join(os.curdir, "src" ), ".cpp" )
 )
 
 env.Default( default )
