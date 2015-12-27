@@ -18,12 +18,13 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.     #
 ############################################################################
 **/
-#pragma once
+
 #include "jimdbclient.h"
 #include "log/logger.h"
 #include "cmdargs.h"
 #include <random>
 #define FIND
+
 //test main
 int main(int argc, char* argv[])
 {

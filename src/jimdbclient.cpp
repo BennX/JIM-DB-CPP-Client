@@ -1,4 +1,3 @@
-#pragma once
 /**
 ############################################################################
 # GPL License                                                              #
@@ -19,6 +18,7 @@
 # along with this program. If not, see <http://www.gnu.org/licenses/>.     #
 ############################################################################
 **/
+
 #include "jimdbclient.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
